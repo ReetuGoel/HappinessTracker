@@ -1,7 +1,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-// Monthly Happiness Tracker UI (no emojis)
+// Moodify UI (no emojis)
 // Tick daily for: Work • Relationship • Health
 // States per category (cycles): Off → Happy → Sad → Off
 // - Month navigation
@@ -208,7 +208,7 @@ export default function MonthlyHappinessTracker() {
       <div className="max-w-5xl mx-auto">
         <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Monthly Happiness Tracker</h1>
+            <h1 className="text-2xl md:text-3xl font-bold">Moodify</h1>
             <p className="text-sm opacity-70">Tick 🙂 or 🙁 for Work and Health. Click again to switch.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
