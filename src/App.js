@@ -1,4 +1,3 @@
-
 import React, { useEffect, useMemo, useState } from "react";
 
 // Moodify UI (no emojis)
@@ -118,6 +117,22 @@ function computeMonthStats(cursor, checks) {
 }
 
 export default function MonthlyHappinessTracker() {
+  // Auth (moved inside component)
+  const [user, setUser] = useState(null);
+  useEffect(() => {
+    fetch('/.auth/me')
+      .then(r => r.json())
+      .then(d => { if (d.clientPrincipal) setUser(d.clientPrincipal); });
+  }, []);
+
+  // Theme handling
+  const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const [theme, setTheme] = useState(() => localStorage.getItem('moodify-theme') || (prefersDark ? 'dark' : 'light'));
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    localStorage.setItem('moodify-theme', theme);
+  }, [theme]);
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
   const now = new Date();
   const [cursor, setCursor] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
   const [checks, setChecks] = useState({});
@@ -182,17 +197,29 @@ export default function MonthlyHappinessTracker() {
     const k = fmtDateKey(date);
     const day = checks[k] || {};
     const isToday = fmtDateKey(date) === fmtDateKey(new Date());
-  const score = moodToInt(day.work) + moodToInt(day.health);
+    const score = moodToInt(day.work) + moodToInt(day.health);
+    const onKey = (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        toggle(k, CATEGORIES[0].key);
+        e.preventDefault();
+      }
+    };
     return (
-      <div className={`border rounded-2xl p-2 flex flex-col gap-2 bg-white ${isToday ? "ring-2 ring-indigo-500" : ""}`}>
+      <div
+        className={`border rounded-2xl p-2 flex flex-col gap-2 bg-white shadow-sm dark:bg-slate-800 transition ${isToday ? "ring-2 ring-indigo-500" : ""}`}
+        tabIndex={0}
+        onKeyDown={onKey}
+        aria-label={`Day ${date.getDate()} score ${score}`}
+      >
         <div className="text-xs font-semibold opacity-70">{date.getDate()}</div>
         <div className="mt-auto flex flex-wrap gap-1">
           {CATEGORIES.map((c) => (
             <button
               key={c.key}
               onClick={() => toggle(k, c.key)}
-              className={`text-xs px-2 py-1 rounded-full border transition w-10 text-center select-none ${moodClass(day[c.key])}`}
+              className={`text-xs px-2 py-1 rounded-full border transition w-10 text-center select-none focus:outline-none focus:ring-2 focus:ring-indigo-500 ${moodClass(day[c.key])}`}
               title={`${c.label}`}
+              aria-pressed={!!day[c.key]}
             >
               {moodIcon(day[c.key], c.short)}
             </button>
@@ -204,27 +231,36 @@ export default function MonthlyHappinessTracker() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-indigo-50 to-purple-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+    <div className="min-h-screen w-full bg-gradient-to-b from-indigo-50 to-purple-50 dark:from-slate-900 dark:to-slate-950 text-slate-800 dark:text-slate-100 p-6 transition-colors">
+      <div className="max-w-6xl mx-auto">
+        <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl md:text-3xl font-bold">Moodify</h1>
-            <p className="text-sm opacity-70">Tick 🙂 or 🙁 for Work and Health. Click again to switch.</p>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-fuchsia-600 bg-clip-text text-transparent">Moodify</h1>
+            <p className="text-sm opacity-70 mt-1">Track your daily mood for Work & Health. Cycle: Off → 🙂 → 🙁</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button onClick={prevMonth} className="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50">◀ Prev</button>
+            <button onClick={prevMonth} className="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:hover:bg-slate-700">◀ Prev</button>
             <div className="px-4 py-2 font-semibold">{monthLabel(year, month)}</div>
-            <button onClick={nextMonth} className="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50">Next ▶</button>
+            <button onClick={nextMonth} className="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:hover:bg-slate-700">Next ▶</button>
+            <button onClick={toggleTheme} aria-label="Toggle theme" className="px-3 py-2 rounded-xl border bg-white hover:bg-gray-50 dark:bg-slate-800 dark:border-slate-600 dark:hover:bg-slate-700">{theme === 'dark' ? '🌙' : '☀️'}</button>
+            {user ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs md:text-sm">Welcome, {user.userDetails}</span>
+                <a href="/.auth/logout" className="px-3 py-2 rounded-xl border bg-gray-600 text-white hover:bg-gray-700 ml-2 dark:border-slate-500">Logout</a>
+              </div>
+            ) : (
+              <a href="/.auth/login/github" className="px-3 py-2 rounded-xl border bg-indigo-600 text-white hover:bg-indigo-700 ml-2 shadow">Login with GitHub</a>
+            )}
           </div>
         </header>
-
-        <section className="mb-4 flex items-center gap-3 text-sm">
-          <span className="px-2 py-1 rounded-full border">🙂 = Happy</span>
-          <span className="px-2 py-1 rounded-full border">🙁 = Sad</span>
-          <span className="px-2 py-1 rounded-full border">Score = Happy(+1), Sad(−1)</span>
+        <section className="mb-6 flex flex-wrap items-center gap-3 text-xs md:text-sm">
+          <span className="px-2 py-1 rounded-full border bg-white dark:bg-slate-800">🙂 Happy</span>
+          <span className="px-2 py-1 rounded-full border bg-white dark:bg-slate-800">🙁 Sad</span>
+          <span className="px-2 py-1 rounded-full border bg-white dark:bg-slate-800">Cycle: Off → 🙂 → 🙁 → Off</span>
+          <span className="px-2 py-1 rounded-full border bg-white dark:bg-slate-800">Export & stats below</span>
         </section>
 
-        <section className="rounded-3xl border bg-white p-4 shadow-sm">
+  <section className="rounded-3xl border bg-white dark:bg-slate-900 p-5 shadow-sm">
           <div className="grid grid-cols-7 gap-2 mb-2 text-xs font-medium opacity-70">
             {"Sun Mon Tue Wed Thu Fri Sat".split(" ").map((d) => (
               <div key={d} className="text-center">{d}</div>
@@ -235,21 +271,39 @@ export default function MonthlyHappinessTracker() {
           </div>
         </section>
 
-        <section className="mt-6 rounded-3xl border bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold">This Month Summary</h2>
-            <div className="text-xs opacity-70">Days tracked: {stats.daysTracked}/{stats.daysInMonth} · Overall net: {stats.totalNet}</div>
+        <section className="mt-8 rounded-3xl border bg-white dark:bg-slate-900 p-5 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+            <h2 className="text-base font-semibold">This Month Summary</h2>
+            <div className="text-xs opacity-70 flex flex-wrap gap-3">
+              <span>Days tracked: {stats.daysTracked}/{stats.daysInMonth}</span>
+              <span>Overall net: {stats.totalNet}</span>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {(() => {
+            const possibleMax = CATEGORIES.length * stats.daysInMonth; // all happy
+            const pct = possibleMax ? Math.round(((stats.totalNet + possibleMax) / (possibleMax * 2)) * 100) : 0; // -max..+max → 0..100
+            return (
+              <div className="mb-6">
+                <div className="flex justify-between text-[10px] uppercase tracking-wide mb-1 opacity-60"><span>Overall Mood Balance</span><span>{pct}%</span></div>
+                <div className="h-3 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div style={{width: pct + '%'}} className="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-green-500 transition-all" />
+                </div>
+              </div>
+            );
+          })()}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {CATEGORIES.map((c) => {
               const s = stats.perCat[c.key];
               return (
-                <div key={c.key} className="border rounded-2xl p-3">
-                  <div className="text-sm font-medium mb-2">{c.label}</div>
-                  <div className="flex items-center gap-4 text-sm">
+                <div key={c.key} className="border rounded-2xl p-4 bg-white dark:bg-slate-800 flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium">{c.label}</div>
+                    <div className="text-[10px] opacity-60 uppercase">net {s.net}</div>
+                  </div>
+                  <div className="flex items-center gap-6 text-sm">
                     <div className="flex items-center gap-1"><span>🙂</span><span className="font-semibold">{s.happy}</span></div>
                     <div className="flex items-center gap-1"><span>🙁</span><span className="font-semibold">{s.sad}</span></div>
-                    <div className="ml-auto text-xs opacity-70">net: <span className="font-semibold">{s.net}</span></div>
+                    <div className="flex items-center gap-1 text-xs opacity-70"><span>Ø</span><span className="font-semibold">{s.happy + s.sad ? s.net : 0}</span></div>
                   </div>
                 </div>
               );
@@ -257,9 +311,10 @@ export default function MonthlyHappinessTracker() {
           </div>
         </section>
 
-        <footer className="mt-6 flex flex-wrap gap-3">
-          <button onClick={downloadCSV} className="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">Download CSV</button>
-          <button onClick={clearMonth} className="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50">Clear This Month</button>
+        <footer className="mt-8 flex flex-wrap gap-3">
+          <button onClick={downloadCSV} className="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:hover:bg-slate-800 shadow-sm">Download CSV</button>
+          <button onClick={clearMonth} className="px-4 py-2 rounded-xl border bg-white hover:bg-gray-50 dark:bg-slate-900 dark:border-slate-700 dark:hover:bg-slate-800" title="Clear only the visible month">Clear This Month</button>
+          <span className="ml-auto text-[10px] opacity-60">Local-only data • Sync coming soon</span>
         </footer>
       </div>
     </div>
