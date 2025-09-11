@@ -1,9 +1,20 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
+  darkMode: 'class',
+  content: [
+    './public/index.html',
+    './src/**/*.{js,jsx,ts,tsx}',
+  ],
   theme: {
-    extend: {},
+    extend: {
+      transitionProperty: {
+        'width': 'width'
+      }
+    },
   },
+  safelist: [
+    'from-rose-500', 'via-amber-400', 'to-green-500'
+  ],
   plugins: [],
 }
 
